@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import './App.css';
 import { generateCoachAdviceForUsers, getStoredGeminiApiKey, setStoredGeminiApiKey } from './services/gemini';
 import { clearWorkoutCache, decodeAthleteFromSource, loadWorkouts, saveWorkout, stripAthleteFromSource, type SharedWorkout } from './services/supabase';
-const appLogo = '/Jarvis/logo-512.png';
+const appLogo = '/Jarvis/logo.jpg';
 
 type UserKey = 'Ettore' | 'Papà' | 'Zio';
 
