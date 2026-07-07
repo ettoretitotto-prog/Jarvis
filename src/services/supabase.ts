@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = 'https://dfrcpfgbyoooqpptloiv.supabase.co'
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 const STORAGE_KEY = 'jarvis.workouts'
+const ATHLETE_PREFIX = 'Atleta: '
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
@@ -15,13 +16,17 @@ export type GroupMember = 'Ettore' | 'Papà' | 'Zio'
 
 export type SharedWorkout = {
   id: string
-  user: GroupMember
+  user: string
   name: string
   date: string
   distance_km: number
   elevation_m: number
   source: string
   created_at?: string
+}
+
+export type WorkoutInsert = Omit<SharedWorkout, 'id' | 'created_at' | 'user'> & {
+  athlete: GroupMember
 }
 
 function createWorkoutId() {
@@ -73,9 +78,27 @@ function mergeWorkouts(remote: SharedWorkout[], local: SharedWorkout[]) {
   return Array.from(map.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
-export async function saveWorkout(workout: Omit<SharedWorkout, 'id' | 'created_at'>) {
+function encodeAthleteSource(athlete: GroupMember, source: string) {
+  return `${ATHLETE_PREFIX}${athlete} | ${source}`.trim()
+}
+
+export function decodeAthleteFromSource(source: string): GroupMember {
+  const match = source.match(/Atleta:\s*(Ettore|Papà|Zio)/)
+  return (match?.[1] as GroupMember | undefined) ?? 'Ettore'
+}
+
+export function stripAthleteFromSource(source: string) {
+  return source.replace(/^Atleta:\s*(Ettore|Papà|Zio)\s*\|\s*/u, '')
+}
+
+export async function saveWorkout(workout: WorkoutInsert) {
   const localWorkout: SharedWorkout = {
-    ...workout,
+    user: new Date().toISOString(),
+    name: workout.name,
+    date: workout.date,
+    distance_km: workout.distance_km,
+    elevation_m: workout.elevation_m,
+    source: encodeAthleteSource(workout.athlete, workout.source),
     id: createWorkoutId(),
   }
 

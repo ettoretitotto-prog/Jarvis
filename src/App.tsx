@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import './App.css';
 import { generateCoachAdviceForUsers, getStoredGeminiApiKey, setStoredGeminiApiKey } from './services/gemini';
-import { loadWorkouts, saveWorkout, type SharedWorkout } from './services/supabase';
+import { decodeAthleteFromSource, loadWorkouts, saveWorkout, stripAthleteFromSource, type SharedWorkout } from './services/supabase';
 
 type UserKey = 'Ettore' | 'Papà' | 'Zio';
 
@@ -73,12 +73,12 @@ function App() {
         const sharedWorkouts = await loadWorkouts();
         const mapped = (sharedWorkouts ?? []).map((item: SharedWorkout) => ({
           id: item.id,
-          user: item.user as UserKey,
+          user: decodeAthleteFromSource(item.source),
           name: item.name,
           date: item.date,
           distanceKm: item.distance_km,
           elevationM: item.elevation_m,
-          source: item.source,
+          source: stripAthleteFromSource(item.source),
         }));
 
         const totalKm = mapped.reduce((sum, item) => sum + item.distanceKm, 0);
@@ -123,7 +123,7 @@ function App() {
 
     try {
       await saveWorkout({
-        user: formUser,
+        athlete: formUser,
         name: formName,
         date: formDate,
         distance_km: Number(formKm),
@@ -140,12 +140,12 @@ function App() {
       const refreshed = await loadWorkouts();
       const mapped = (refreshed ?? []).map((item: SharedWorkout) => ({
         id: item.id,
-        user: item.user as UserKey,
+        user: decodeAthleteFromSource(item.source),
         name: item.name,
         date: item.date,
         distanceKm: item.distance_km,
         elevationM: item.elevation_m,
-        source: item.source,
+        source: stripAthleteFromSource(item.source),
       }));
 
       const totals = createEmptyGroupTotals();
