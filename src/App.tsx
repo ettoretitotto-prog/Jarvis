@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import './App.css';
-import { generateCoachAdviceForUsers } from './services/gemini';
+import { generateCoachAdviceForUsers, getStoredGeminiApiKey, setStoredGeminiApiKey } from './services/gemini';
 import { loadWorkouts, saveWorkout, type SharedWorkout } from './services/supabase';
 
 type UserKey = 'Ettore' | 'Papà' | 'Zio';
@@ -35,6 +35,9 @@ function App() {
   const [weeklyKm, setWeeklyKm] = useState(0);
   const [weeklyUscite, setWeeklyUscite] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyStatus, setApiKeyStatus] = useState('');
   const [formName, setFormName] = useState('Lungo serale');
   const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 10));
   const [formKm, setFormKm] = useState('35');
@@ -42,8 +45,29 @@ function App() {
   const [formUser, setFormUser] = useState<UserKey>('Ettore');
   const [formStatus, setFormStatus] = useState('');
 
+  const refreshCoachAdvice = async (mapped: WorkoutEntry[], key = geminiApiKey) => {
+    const adviceEntries = users.map((user) => ({
+      user,
+      workouts: mapped
+        .filter((item) => item.user === user)
+        .map((item) => ({
+          name: item.name,
+          date: item.date,
+          distanceKm: item.distanceKm,
+          elevationM: item.elevationM,
+        })),
+    }));
+
+    const aiAdvice = await generateCoachAdviceForUsers(adviceEntries, key);
+    setCoachAdvice({ ...emptyCoachAdvice, ...aiAdvice } as Record<UserKey, string>);
+  };
+
   useEffect(() => {
     const loadData = async () => {
+      const savedKey = getStoredGeminiApiKey() ?? '';
+      setGeminiApiKey(savedKey);
+      setApiKeyInput(savedKey);
+
       setIsLoading(true);
       try {
         const sharedWorkouts = await loadWorkouts();
@@ -70,20 +94,7 @@ function App() {
         setWeeklyKm(Number(totalKm.toFixed(1)));
         setWeeklyUscite(totalUscite);
 
-        const adviceEntries = users.map((user) => ({
-          user,
-          workouts: mapped
-            .filter((item) => item.user === user)
-            .map((item) => ({
-              name: item.name,
-              date: item.date,
-              distanceKm: item.distanceKm,
-              elevationM: item.elevationM,
-            })),
-        }));
-
-        const aiAdvice = await generateCoachAdviceForUsers(adviceEntries);
-        setCoachAdvice({ ...emptyCoachAdvice, ...aiAdvice } as Record<UserKey, string>);
+        await refreshCoachAdvice(mapped, savedKey);
       } catch {
         setActivities([]);
         setGroupTotals(createEmptyGroupTotals());
@@ -96,7 +107,15 @@ function App() {
     };
 
     void loadData();
-  }, []);
+  }, [geminiApiKey]);
+
+  const handleSaveApiKey = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedKey = apiKeyInput.trim();
+    setStoredGeminiApiKey(trimmedKey);
+    setGeminiApiKey(trimmedKey);
+    setApiKeyStatus(trimmedKey ? 'Chiave Gemini salvata nel browser.' : 'Chiave rimossa.');
+  };
 
   const handleSubmitWorkout = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -141,20 +160,7 @@ function App() {
       setWeeklyKm(Number(totalKm.toFixed(1)));
       setWeeklyUscite(mapped.length);
 
-      const adviceEntries = users.map((user) => ({
-        user,
-        workouts: mapped
-          .filter((item) => item.user === user)
-          .map((item) => ({
-            name: item.name,
-            date: item.date,
-            distanceKm: item.distanceKm,
-            elevationM: item.elevationM,
-          })),
-      }));
-
-      const aiAdvice = await generateCoachAdviceForUsers(adviceEntries);
-      setCoachAdvice({ ...emptyCoachAdvice, ...aiAdvice } as Record<UserKey, string>);
+      await refreshCoachAdvice(mapped, geminiApiKey);
     } catch {
       setFormStatus('Impossibile salvare. Riprova.');
     }
@@ -179,6 +185,17 @@ function App() {
           <h2>AI Coach</h2>
           <span className="connect-link muted">Gemini</span>
         </div>
+        <form className="api-key-form" onSubmit={handleSaveApiKey}>
+          <input
+            type="password"
+            value={apiKeyInput}
+            onChange={(event) => setApiKeyInput(event.target.value)}
+            placeholder="Chiave Gemini API"
+          />
+          <button type="submit">Salva chiave</button>
+        </form>
+        <p className="api-key-status">{apiKeyStatus || 'Le chiavi vengono salvate solo nel browser di questo dispositivo.'}</p>
+
         <div className="coach-table">
           <div className="coach-row coach-row-header">
             <span>Atleta</span>

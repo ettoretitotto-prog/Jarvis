@@ -12,18 +12,47 @@ export interface CoachEntry {
   }>;
 }
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const STORAGE_KEY = 'jarvis.geminiApiKey';
 
-export async function generateCoachText(payload: string): Promise<GeminiCoachResponse> {
-  if (!GEMINI_API_KEY) {
+export function getStoredGeminiApiKey(): string | null {
+  if (typeof window === 'undefined') {
+    return import.meta.env.VITE_GEMINI_API_KEY ?? null;
+  }
+
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    return stored;
+  }
+
+  return import.meta.env.VITE_GEMINI_API_KEY ?? null;
+}
+
+export function setStoredGeminiApiKey(apiKey: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const value = apiKey.trim();
+  if (value) {
+    window.localStorage.setItem(STORAGE_KEY, value);
+    return;
+  }
+
+  window.localStorage.removeItem(STORAGE_KEY);
+}
+
+export async function generateCoachText(payload: string, apiKeyOverride?: string | null): Promise<GeminiCoachResponse> {
+  const apiKey = apiKeyOverride ?? getStoredGeminiApiKey();
+
+  if (!apiKey) {
     return {
-      text: 'Dati bassi: serve un lungo serio, senza scuse, per arrivare a ottobre in forma.',
+      text: 'Inserisci la chiave Gemini per attivare il consiglio.',
     };
   }
 
   const systemPrompt = `Sei un coach di ciclismo per la gara Eroica. Ottobre è vicino. Analizza questi dati settimanali: ${payload}. Scrivi una sola frase d'impatto, diretta e senza preamboli. Se i km sono bassi, sii ironico ma pungente. Se manca il fondo, suggerisci un lungo. Se mancano intensità, suggerisci sprint.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -41,11 +70,12 @@ export async function generateCoachText(payload: string): Promise<GeminiCoachRes
   return { text: text.trim() || 'Serve più lavoro, e subito.' };
 }
 
-export async function generateCoachAdviceForUsers(entries: CoachEntry[]): Promise<Record<string, string>> {
+export async function generateCoachAdviceForUsers(entries: CoachEntry[], apiKeyOverride?: string | null): Promise<Record<string, string>> {
   const result: Record<string, string> = {};
+  const apiKey = apiKeyOverride ?? getStoredGeminiApiKey();
 
-  if (!GEMINI_API_KEY) {
-    return Object.fromEntries(entries.map((entry) => [entry.user, 'Nessun consiglio disponibile al momento.']));
+  if (!apiKey) {
+    return Object.fromEntries(entries.map((entry) => [entry.user, 'Inserisci la chiave Gemini per attivare il consiglio.']));
   }
 
   for (const entry of entries) {
@@ -55,22 +85,26 @@ export async function generateCoachAdviceForUsers(entries: CoachEntry[]): Promis
 
     const systemPrompt = `Sei un coach di ciclismo per Eroica. Scrivi un consiglio breve, chiaro e motivato per ${entry.user}. Usa solo i dati che ti passo: ${payload}. Massimo 2 righe, in italiano, con tono diretto.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-      }),
-    });
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+        }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        result[entry.user] = 'Consiglio non disponibile in questo momento.';
+        continue;
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      result[entry.user] = text.trim() || 'Serve più lavoro, e subito.';
+    } catch {
       result[entry.user] = 'Consiglio non disponibile in questo momento.';
-      continue;
     }
-
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    result[entry.user] = text.trim() || 'Serve più lavoro, e subito.';
   }
 
   return result;
