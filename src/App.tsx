@@ -161,8 +161,9 @@ function App() {
       setWeeklyUscite(mapped.length);
 
       await refreshCoachAdvice(mapped, geminiApiKey);
-    } catch {
-      setFormStatus('Impossibile salvare. Riprova.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Impossibile salvare. Riprova.'
+      setFormStatus(`Impossibile salvare: ${message}`);
     }
   };
 

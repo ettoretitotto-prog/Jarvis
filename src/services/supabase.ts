@@ -80,19 +80,28 @@ export async function saveWorkout(workout: Omit<SharedWorkout, 'id' | 'created_a
   }
 
   try {
-    const { error } = await supabase.from('workouts').insert([localWorkout])
+    const { error } = await supabase.from('workouts').insert([
+      {
+        user: localWorkout.user,
+        name: localWorkout.name,
+        date: localWorkout.date,
+        distance_km: localWorkout.distance_km,
+        elevation_m: localWorkout.elevation_m,
+        source: localWorkout.source,
+      },
+    ])
 
-    if (!error) {
-      const existing = readLocalWorkouts()
-      writeLocalWorkouts(mergeWorkouts([localWorkout], existing))
-      return
+    if (error) {
+      throw error
     }
-  } catch {
-    // fallback to local storage when Supabase is unavailable
-  }
 
-  const existing = readLocalWorkouts()
-  writeLocalWorkouts(mergeWorkouts([localWorkout], existing))
+    const existing = readLocalWorkouts()
+    writeLocalWorkouts(mergeWorkouts([localWorkout], existing))
+    return
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Errore sconosciuto durante il salvataggio su Supabase'
+    throw new Error(message)
+  }
 }
 
 export async function loadWorkouts() {
