@@ -78,6 +78,16 @@ function mergeWorkouts(remote: SharedWorkout[], local: SharedWorkout[]) {
   return Array.from(map.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
+function workoutSignature(workout: Pick<SharedWorkout, 'name' | 'date' | 'distance_km' | 'elevation_m' | 'source'>) {
+  return [
+    workout.name.trim().toLowerCase(),
+    workout.date,
+    workout.distance_km,
+    workout.elevation_m,
+    workout.source.trim().toLowerCase(),
+  ].join('|')
+}
+
 function encodeAthleteSource(athlete: GroupMember, source: string) {
   return `${ATHLETE_PREFIX}${athlete} | ${source}`.trim()
 }
@@ -103,7 +113,9 @@ export async function saveWorkout(workout: WorkoutInsert) {
   }
 
   try {
-    const { error } = await supabase.from('workouts').insert([
+    const { data, error } = await supabase
+      .from('workouts')
+      .insert([
       {
         user: localWorkout.user,
         name: localWorkout.name,
@@ -112,14 +124,18 @@ export async function saveWorkout(workout: WorkoutInsert) {
         elevation_m: localWorkout.elevation_m,
         source: localWorkout.source,
       },
-    ])
+      ])
+      .select('*')
+      .single()
 
     if (error) {
       throw error
     }
 
     const existing = readLocalWorkouts()
-    writeLocalWorkouts(mergeWorkouts([localWorkout], existing))
+    const savedWorkout = data ? (data as SharedWorkout) : localWorkout
+    const withoutDuplicate = existing.filter((item) => workoutSignature(item) !== workoutSignature(savedWorkout))
+    writeLocalWorkouts(mergeWorkouts([savedWorkout], withoutDuplicate))
     return
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Errore sconosciuto durante il salvataggio su Supabase'
@@ -138,7 +154,9 @@ export async function loadWorkouts() {
 
     if (!error && data) {
       const remoteWorkouts = data as SharedWorkout[]
-      const merged = mergeWorkouts(remoteWorkouts, localWorkouts)
+      const remoteSignatures = new Set(remoteWorkouts.map((item) => workoutSignature(item)))
+      const filteredLocal = localWorkouts.filter((item) => !remoteSignatures.has(workoutSignature(item)))
+      const merged = mergeWorkouts(remoteWorkouts, filteredLocal)
       writeLocalWorkouts(merged)
       return merged
     }
