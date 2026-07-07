@@ -1,0 +1,201 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.hero-card,
+.coach-card,
+.section-card {
+  background: #fff;
+  border: 1px solid #e8e2d8;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(14, 24, 36, 0.06);
+}
+
+.hero-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: #7b6a3a;
+  margin-bottom: 4px;
+}
+
+.hero-copy {
+  color: #5f5a4b;
+  margin-top: 6px;
+}
+
+.hero-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  background: #f7efe0;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.hero-meta strong {
+  font-size: 1.2rem;
+  color: #162233;
+}
+
+.coach-head,
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.connect-link {
+  text-decoration: none;
+  border: none;
+  background: #1e3a5f;
+  color: white;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.connect-link.muted {
+  background: #f2efe8;
+  color: #22313f;
+}
+
+.coach-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coach-row {
+  display: grid;
+  grid-template-columns: 110px 120px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px solid #efe9dc;
+}
+
+.coach-row-header {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7b6a3a;
+}
+
+.activity-list,
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activity-item,
+.group-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #efe9dc;
+}
+
+.activity-source {
+  font-size: 0.8rem;
+  color: #6f674f;
+  background: #f6efe2;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.activity-item p,
+.group-card p {
+  color: #5f5a4b;
+  margin-top: 4px;
+}
+
+.group-card {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.workout-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.workout-form input,
+.workout-form select,
+.workout-form button {
+  width: 100%;
+  border: 1px solid #ddd4c6;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.workout-form button {
+  background: #162233;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.form-status {
+  color: #2f5f3f;
+  margin: 4px 0 8px;
+}
+
+.small-copy {
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+.empty-state {
+  color: #6f674f;
+  padding: 8px 0;
+}
+
+@media (max-width: 680px) {
+  .hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-meta {
+    align-items: flex-start;
+  }
+
+  .activity-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .coach-row {
+    grid-template-columns: 1fr;
+  }
+
+  .workout-form {
+    grid-template-columns: 1fr;
+  }
+}
