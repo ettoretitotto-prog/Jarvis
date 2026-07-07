@@ -7,6 +7,18 @@
   margin: 0 auto;
 }
 
+.update-banner {
+  border: 1px solid #cfae63;
+  background: #fff4d6;
+  color: #6b4d00;
+  border-radius: 999px;
+  padding: 12px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(14, 24, 36, 0.08);
+}
+
 .hero-card,
 .coach-card,
 .section-card {

@@ -44,6 +44,7 @@ function App() {
   const [formElevation, setFormElevation] = useState('400');
   const [formUser, setFormUser] = useState<UserKey>('Ettore');
   const [formStatus, setFormStatus] = useState('');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   const refreshCoachAdvice = async (mapped: WorkoutEntry[], key = geminiApiKey) => {
     const adviceEntries = users.map((user) => ({
@@ -110,6 +111,19 @@ function App() {
     void loadData();
   }, [geminiApiKey]);
 
+  useEffect(() => {
+    const onServiceWorkerUpdate = () => {
+      setUpdateAvailable(true);
+    };
+
+    window.addEventListener('swUpdateAvailable', onServiceWorkerUpdate as EventListener);
+    return () => window.removeEventListener('swUpdateAvailable', onServiceWorkerUpdate as EventListener);
+  }, []);
+
+  const handleRefreshApp = () => {
+    window.location.reload();
+  };
+
   const handleSaveApiKey = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedKey = apiKeyInput.trim();
@@ -170,6 +184,11 @@ function App() {
 
   return (
     <main className="app-shell">
+      {updateAvailable ? (
+        <button className="update-banner" type="button" onClick={handleRefreshApp}>
+          Nuova versione disponibile. Tocca qui per aggiornare.
+        </button>
+      ) : null}
       <header className="hero-card">
         <div>
           <p className="eyebrow">Eroica prep • gruppo condiviso</p>
