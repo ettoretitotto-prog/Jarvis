@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = 'https://dfrcpfgbyoooqpptloiv.supabase.co'
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const STORAGE_KEY = 'jarvis.workouts'
+const STORAGE_KEY = 'jarvis.workouts.v2'
+const LEGACY_STORAGE_KEY = 'jarvis.workouts'
 const ATHLETE_PREFIX = 'Atleta: '
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -43,7 +44,7 @@ function readLocalWorkouts(): SharedWorkout[] {
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) {
       return []
     }
@@ -61,6 +62,16 @@ function writeLocalWorkouts(workouts: SharedWorkout[]) {
   }
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(workouts))
+  window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+}
+
+export function clearWorkoutCache() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.removeItem(STORAGE_KEY)
+  window.localStorage.removeItem(LEGACY_STORAGE_KEY)
 }
 
 function mergeWorkouts(remote: SharedWorkout[], local: SharedWorkout[]) {
@@ -116,14 +127,14 @@ export async function saveWorkout(workout: WorkoutInsert) {
     const { data, error } = await supabase
       .from('workouts')
       .insert([
-      {
-        user: localWorkout.user,
-        name: localWorkout.name,
-        date: localWorkout.date,
-        distance_km: localWorkout.distance_km,
-        elevation_m: localWorkout.elevation_m,
-        source: localWorkout.source,
-      },
+        {
+          user: localWorkout.user,
+          name: localWorkout.name,
+          date: localWorkout.date,
+          distance_km: localWorkout.distance_km,
+          elevation_m: localWorkout.elevation_m,
+          source: localWorkout.source,
+        },
       ])
       .select('*')
       .single()
