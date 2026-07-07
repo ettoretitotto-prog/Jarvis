@@ -13,6 +13,7 @@ export interface CoachEntry {
 }
 
 const STORAGE_KEY = 'jarvis.geminiApiKey';
+const FALLBACK_MESSAGE = 'Coach offline: usa più volume e cura la costanza.';
 
 export function getStoredGeminiApiKey(): string | null {
   if (typeof window === 'undefined') {
@@ -61,13 +62,37 @@ export async function generateCoachText(payload: string, apiKeyOverride?: string
   });
 
   if (!response.ok) {
-    throw new Error('Impossibile generare il testo del coach');
+    return {
+      text: FALLBACK_MESSAGE,
+    };
   }
 
   const data = await response.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-  return { text: text.trim() || 'Serve più lavoro, e subito.' };
+  return { text: text.trim() || FALLBACK_MESSAGE };
+}
+
+function buildFallbackAdvice(entry: CoachEntry) {
+  const totalKm = entry.workouts.reduce((sum, workout) => sum + workout.distanceKm, 0);
+  const totalSessions = entry.workouts.length;
+  const averageKm = totalSessions > 0 ? totalKm / totalSessions : 0;
+  const latest = entry.workouts[0];
+  const latestDay = latest ? new Date(latest.date).toLocaleDateString('it-IT') : 'nessuna data';
+
+  if (totalSessions === 0) {
+    return `${entry.user}: niente uscite, oggi si pedala o si riposa ma si pianifica.`;
+  }
+
+  if (totalKm < 40) {
+    return `${entry.user}: volume basso (${totalKm.toFixed(1)} km in ${totalSessions} uscite). Serve un lungo da costruire bene.`;
+  }
+
+  if (averageKm < 15) {
+    return `${entry.user}: buone gambe ma fondo corto. L’ultima uscita è del ${latestDay}, alza il chilometraggio.`;
+  }
+
+  return `${entry.user}: lavoro solido. Continua così e inserisci un richiamo di intensità dopo ${totalSessions} uscite.`;
 }
 
 export async function generateCoachAdviceForUsers(entries: CoachEntry[], apiKeyOverride?: string | null): Promise<Record<string, string>> {
@@ -75,7 +100,7 @@ export async function generateCoachAdviceForUsers(entries: CoachEntry[], apiKeyO
   const apiKey = apiKeyOverride ?? getStoredGeminiApiKey();
 
   if (!apiKey) {
-    return Object.fromEntries(entries.map((entry) => [entry.user, 'Inserisci la chiave Gemini per attivare il consiglio.']));
+    return Object.fromEntries(entries.map((entry) => [entry.user, buildFallbackAdvice(entry)]));
   }
 
   for (const entry of entries) {
@@ -101,9 +126,9 @@ export async function generateCoachAdviceForUsers(entries: CoachEntry[], apiKeyO
 
       const data = await response.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-      result[entry.user] = text.trim() || 'Serve più lavoro, e subito.';
+      result[entry.user] = text.trim() || buildFallbackAdvice(entry);
     } catch {
-      result[entry.user] = 'Consiglio non disponibile in questo momento.';
+      result[entry.user] = buildFallbackAdvice(entry);
     }
   }
 
