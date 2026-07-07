@@ -21,14 +21,14 @@ export default defineConfig({
         start_url: repoBase,
         icons: [
           {
-            src: `${repoBase}pwa-192x192.svg`,
+            src: `${repoBase}logo-192.png`,
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
           },
           {
-            src: `${repoBase}pwa-512x512.svg`,
+            src: `${repoBase}logo-512.png`,
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
           },
         ],
       },

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import './App.css';
 import { generateCoachAdviceForUsers, getStoredGeminiApiKey, setStoredGeminiApiKey } from './services/gemini';
 import { clearWorkoutCache, decodeAthleteFromSource, loadWorkouts, saveWorkout, stripAthleteFromSource, type SharedWorkout } from './services/supabase';
+const appLogo = '/Jarvis/logo-512.png';
 
 type UserKey = 'Ettore' | 'Papà' | 'Zio';
 
@@ -190,6 +191,7 @@ function App() {
         </button>
       ) : null}
       <header className="hero-card">
+        <img className="hero-logo" src={appLogo} alt="Logo L'Eroica" />
         <div>
           <p className="eyebrow">Eroica prep • gruppo condiviso</p>
           <h1>Jarvis</h1>
