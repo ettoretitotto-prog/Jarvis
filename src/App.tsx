@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import './App.css';
 import { generateCoachAdviceForUsers, getStoredGeminiApiKey, setStoredGeminiApiKey } from './services/gemini';
-import { decodeAthleteFromSource, loadWorkouts, saveWorkout, stripAthleteFromSource, type SharedWorkout } from './services/supabase';
+import { clearWorkoutCache, decodeAthleteFromSource, loadWorkouts, saveWorkout, stripAthleteFromSource, type SharedWorkout } from './services/supabase';
 
 type UserKey = 'Ettore' | 'Papà' | 'Zio';
 
@@ -63,6 +63,7 @@ function App() {
   };
 
   useEffect(() => {
+    clearWorkoutCache();
     const loadData = async () => {
       const savedKey = getStoredGeminiApiKey() ?? '';
       setGeminiApiKey(savedKey);
