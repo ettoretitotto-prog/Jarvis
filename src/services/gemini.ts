@@ -14,6 +14,7 @@ export interface CoachEntry {
 
 const STORAGE_KEY = 'jarvis.geminiApiKey';
 const FALLBACK_MESSAGE = 'Coach offline: usa più volume e cura la costanza.';
+const DEFAULT_MODEL_CANDIDATES = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
 export function getStoredGeminiApiKey(): string | null {
   if (typeof window === 'undefined') {
@@ -53,24 +54,52 @@ export async function generateCoachText(payload: string, apiKeyOverride?: string
 
   const systemPrompt = `Sei un coach di ciclismo per la gara Eroica. Ottobre è vicino. Analizza questi dati settimanali: ${payload}. Scrivi una sola frase d'impatto, diretta e senza preamboli. Se i km sono bassi, sii ironico ma pungente. Se manca il fondo, suggerisci un lungo. Se mancano intensità, suggerisci sprint.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: systemPrompt }] }],
-    }),
-  });
+  const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+  const modelCandidates = DEFAULT_MODEL_CANDIDATES.slice();
 
-  if (!response.ok) {
-    return {
-      text: FALLBACK_MESSAGE,
-    };
+  if (modelsResponse.ok) {
+    const modelsData = await modelsResponse.json();
+    const availableModels = Array.isArray(modelsData?.models)
+      ? modelsData.models
+          .filter((model: { name?: string; supportedGenerationMethods?: string[] }) => {
+            const name = model?.name?.replace(/^models\//, '') ?? '';
+            return name && Array.isArray(model.supportedGenerationMethods) && model.supportedGenerationMethods.includes('generateContent');
+          })
+          .map((model: { name?: string }) => model.name?.replace(/^models\//, '') ?? '')
+          .filter(Boolean)
+      : [];
+
+    for (const model of availableModels) {
+      if (!modelCandidates.includes(model)) {
+        modelCandidates.unshift(model);
+      }
+    }
   }
 
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  for (const model of modelCandidates) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+        }),
+      });
 
-  return { text: text.trim() || FALLBACK_MESSAGE };
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+      return { text: text.trim() || FALLBACK_MESSAGE };
+    } catch {
+      continue;
+    }
+  }
+
+  return { text: FALLBACK_MESSAGE };
 }
 
 function buildFallbackAdvice(entry: CoachEntry) {
@@ -111,22 +140,8 @@ export async function generateCoachAdviceForUsers(entries: CoachEntry[], apiKeyO
     const systemPrompt = `Sei un coach di ciclismo per Eroica. Scrivi un consiglio breve, chiaro e motivato per ${entry.user}. Usa solo i dati che ti passo: ${payload}. Massimo 2 righe, in italiano, con tono diretto.`;
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-        }),
-      });
-
-      if (!response.ok) {
-        result[entry.user] = 'Consiglio non disponibile in questo momento.';
-        continue;
-      }
-
-      const data = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-      result[entry.user] = text.trim() || buildFallbackAdvice(entry);
+      const coachText = await generateCoachText(systemPrompt, apiKey);
+      result[entry.user] = coachText.text.trim() || buildFallbackAdvice(entry);
     } catch {
       result[entry.user] = buildFallbackAdvice(entry);
     }
